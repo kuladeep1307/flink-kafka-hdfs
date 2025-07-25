@@ -6,6 +6,22 @@ import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.configuration.Configuration;
 
 public class KafkaToHdfsJob {
+
+    private static String generateKeyFields(String prefix, boolean withDataPrefix) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 1; i <= 125; i++) {
+            if (withDataPrefix) {
+                builder.append("data.").append(prefix).append(i);
+            } else {
+                builder.append(prefix).append(i).append(" STRING");
+            }
+            if (i != 125) {
+                builder.append(", ");
+            }
+        }
+        return builder.toString();
+    }
+
     public static void main(String[] args) throws Exception {
 
         // Set up Flink environment with checkpointing and fault tolerance
@@ -36,8 +52,7 @@ public class KafkaToHdfsJob {
             "assigned_to STRING," +
             "attestation_status STRING," +
             "business_criticality STRING," +
-            // keys 1 to 125
-            (new String(new char[125]).replaceAll(".", "key_%d STRING,")) +
+            generateKeyFields("key_", false) +
             ">" +
             ") WITH (" +
             "'connector' = 'kafka'," +
@@ -65,8 +80,7 @@ public class KafkaToHdfsJob {
             "assigned_to STRING," +
             "attestation_status STRING," +
             "business_criticality STRING," +
-            // keys 1 to 125
-            (new String(new char[125]).replaceAll(".", "key_%d STRING,")) +
+            generateKeyFields("key_", false) +
             ") WITH (" +
             "'connector' = 'filesystem'," +
             "'path' = 'hdfs://namenode:8020/flink/output/'," +
@@ -81,8 +95,8 @@ public class KafkaToHdfsJob {
             "SELECT " +
             "type, operation, source_table, payload_sys_id, `timestamp`, " +
             "data.aliases, data.asset, data.asset_tag, data.assigned_to, data.attestation_status, data.business_criticality, " +
-            (new String(new char[125]).replaceAll(".", "data.key_%d, ")) +
-            "FROM kafka_source"
+            generateKeyFields("key_", true) +
+            " FROM kafka_source"
         );
     }
 }
